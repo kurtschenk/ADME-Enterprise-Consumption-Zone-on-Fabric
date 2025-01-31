@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Fabric_Delta_Export
+# ## Export_From_Search - ks
 # 
 # New notebook
 
@@ -57,12 +57,8 @@
 # 
 # **The variables are called with config["variable"], for example: config["server"]**
 # 
-# 
-# 
-# 
-# 
 
-# In[ ]:
+# In[99]:
 
 
 import pandas as pd
@@ -71,7 +67,7 @@ import json
 # Correct the JSON string format and load it
 config_json = '''
 {
-    "server": "",
+    "server": "https://mohahuja.energy.azure.com",
     "crs_catalog_url": "/api/crs/catalog/v2/",
     "crs_converter_url": "/api/crs/converter/v2/",
     "entitlements_url": "/api/entitlements/v2/",
@@ -82,23 +78,23 @@ config_json = '''
     "storage_url": "/api/storage/v2/",
     "unit_url": "/api/unit/v3/",
     "workflow_url": "/api/workflow/v1/",
-    "data_partition_id": "",
+    "data_partition_id": "testdata",
     "legal_tag": "legal_tag",
     "acl_viewer": "acl_viewer",
     "acl_owner": "acl_owner",
     "authentication_mode": "msal_interactive",
-    "authority": "",
-    "scopes": [""],
-    "client_id": "",
-    "tenant_id": "",
+    "authority": "https://login.microsoftonline.com",
+    "scopes": ["https://management.core.windows.net/.default"],
+    "client_id": "30f78451-12ec-41f2-8495-89845fca77ce",
+    "client_secret": "{{SECRET}}",
+    "tenant_id": "e2b70470-e94a-4309-936b-4830585f32e9",
     "redirect_uri": "http://localhost:5050",
     "access_token_type" : "",
     "key_vault_name" : "",
     "secret_name" : "",
-    "table_name" : "",
-    "logging_table" : "",
-    "run_info_table" : "",
-    "lakehouse_name" : ""
+    "main_table" : "storage_records_bronze_5",
+    "logging_table" : "_info",
+    "run_info_table" : "_run"
 }
 '''
 
@@ -112,6 +108,10 @@ config = pd.Series(config_dict)
 batch_size = 1000
 
 display(config)
+
+main_table = config["main_table"]
+run_info_table = config["run_info_table"]
+logging_table = config["logging_table"]
 
 
 # # Spark settings
@@ -142,7 +142,7 @@ display(config)
 # Enables the auto-compaction feature for Delta tables in Databricks. This feature helps manage the small file problem by automatically combining small files into larger ones, improving both read and write performance, optimizing storage efficiency, and enhancing overall system performance. Auto-compaction is a valuable feature for maintaining the health and performance of Delta Lake tables, especially in environments with frequent data writes.
 # 
 
-# In[ ]:
+# In[100]:
 
 
 # import packages
@@ -196,7 +196,7 @@ logging.basicConfig(level=logging.WARN, format='%(asctime)s - %(levelname)s - %(
 # # Schemas
 # The solution uses three schemas. One for logging, one for the exported data and one for information on last export. The schemas are listed in the code cell below.
 
-# In[ ]:
+# In[101]:
 
 
 from pyspark.sql.types import StructType, StructField, StringType, LongType
@@ -240,7 +240,7 @@ run_info_schema = StructType([
 
 # # Functions for logging and ADME/OSDU search
 
-# In[ ]:
+# In[102]:
 
 
 from pyspark.sql import SparkSession
@@ -297,8 +297,9 @@ def write_log_batch_to_delta():
             log_df = spark.createDataFrame(log_batch, schema=log_schema)
 
             # Define the paths for Delta tables
-            table_name = config["logging_table"]
-            table_path = f"Tables/{table_name}"
+            table_path = f"Tables/{logging_table}"
+
+            print(log_batch)
 
             # Write the logs to the Delta table in one batch
             log_df.write.format("delta").mode("append").save(table_path)
@@ -359,10 +360,9 @@ def osdu_search_by_cursor(server: str, search_api: str, access_token: str, parti
     return None
 
 
-
 # # Authentication
 
-# In[ ]:
+# In[103]:
 
 
 from msal import ConfidentialClientApplication
@@ -389,25 +389,33 @@ def authenticate_osdu(client_id: str, client_secret: str, authority: str, scopes
         log_message("ERROR", error_message)
     return None
 
-key_vault_name = config["key_vault_name"]
+# key_vault_name = config["key_vault_name"]
+# access_token = authenticate_osdu(
+#     client_id = config['client_id'],    
+#     client_secret= tl.get_secret_with_token(
+#         f"https://{key_vault_name}.vault.azure.net/",
+#         config["secret_name"],
+#         mssparkutils.credentials.getToken(config["access_token_type"])
+#     ),
+#     authority= config['authority'],
+#     scopes= config['scopes']
+    
+# )
+
+# Construct the authority
+authority = f"{config['authority']}/{config['tenant_id']}"
+
 access_token = authenticate_osdu(
     client_id = config['client_id'],    
-    client_secret= tl.get_secret_with_token(
-        f"https://{key_vault_name}.vault.azure.net/",
-        config["secret_name"],
-        mssparkutils.credentials.getToken(config["access_token_type"])
-    ),
-    authority= config['authority'],
+    client_secret= config['client_secret'],
+    authority= authority,
     scopes= config['scopes']
-    
-)
-
-
+    )
 
 
 # # Reset last import time for running code again (testing purposes)
 
-# In[ ]:
+# In[104]:
 
 
 ## Added code Jon Olav Abeland 24.05. This code will create a table to store last run value for delta
@@ -420,12 +428,12 @@ from datetime import datetime, timezone
 # Initialize Spark session (uncomment if needed)
 # spark = SparkSession.builder.appName("ExampleApp").getOrCreate()
 
-lakehouse_name = config["lakehouse_name"]
-table_name = f"{lakehouse_name}.run_info"
+# lakehouse_name = config["lakehouse_name"]
+# table_name = f"{run_info_table}" # f"{lakehouse_name}.run_info"
 
 # SQL to create the table if it doesn't exist
 create_table_sql = f"""
-CREATE TABLE IF NOT EXISTS {lakehouse_name}.run_info (
+CREATE TABLE IF NOT EXISTS {run_info_table} (
     run_id STRING,
     run_timestamp LONG
 )
@@ -435,7 +443,7 @@ CREATE TABLE IF NOT EXISTS {lakehouse_name}.run_info (
 spark.sql(create_table_sql)
 
 # Clear the table for testing purposes (remove this in production)
-spark.sql(f"DELETE FROM {lakehouse_name}.run_info")
+spark.sql(f"DELETE FROM {run_info_table}")
 
 # Define the specific test date
 test_run_date = "2024-09-05 00:00:00"
@@ -447,12 +455,12 @@ run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
 run_info_df = run_info_df.withColumn("run_timestamp", (unix_timestamp(lit(test_run_date)).cast("long")*1000000))
 print(run_info_df.collect()[0])
 
-run_info_df.write.insertInto(table_name, overwrite=False)
+run_info_df.write.insertInto(run_info_table, overwrite=False)
 
 # Query to get the last run value
 last_run_df = spark.sql(f"""
 SELECT run_timestamp
-FROM {lakehouse_name}.run_info
+FROM {run_info_table}
 ORDER BY run_timestamp DESC
 LIMIT 1
 """)
@@ -470,9 +478,46 @@ human_readable_timestamp = datetime.fromtimestamp(last_run_timestamp / 1000000, 
 print(f"Last run timestamp: {human_readable_timestamp}")
 
 
+# In[105]:
+
+
+def create_table2(spark: SparkSession, table_name: str, delete_existing_table: bool, schema: StructType) -> None:
+    table_path = f"Tables/{table_name}"
+
+    try:
+        table_exists = spark.catalog.tableExists(table_name)
+        print(f"table exists: {table_exists}")
+    except AnalysisException:
+        table_exists = False
+
+    if table_exists:
+        if delete_existing_table:
+            backup_table_name = f"{table_name}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            spark.sql(f"ALTER TABLE {table_name} RENAME TO {backup_table_name}")
+            print(f"Existing table {table_name} renamed to {backup_table_name} before recreation.")
+
+        # Drop and recreate
+        spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+
+    # Create an empty table with schema
+    empty_df = spark.createDataFrame([], schema)
+    empty_df.write.format("delta").saveAsTable(table_name)
+    print(f"Table {table_name} created with the schema.")
+
+
+# In[106]:
+
+
+main_table = config["main_table"]
+
+delete_existing_table = config.get("delete_existing_table", "no").lower() == "yes"
+
+# create_table2(spark, main_table, delete_existing_table, schema)
+
+
 # # Main code for batch export from ADME/OSDU to Fabric
 
-# In[ ]:
+# In[107]:
 
 
 from pyspark import SparkContext, SparkConf
@@ -487,11 +532,17 @@ from threading import Lock
 
 # Lock to ensure only one write to the Delta table at a time
 write_lock = Lock()
+batchNumber = 0
 
 def process_batch_with_retry(response, max_retries=3):
+    # log_message("INFO", f"Triggered batch process")
+
     retries = 0
+    
     while retries < max_retries:
+        log_message("INFO", f"Retry number {retries}")
         try:
+            # log_message("INFO", f"{response}")
             # Create DataFrame from the API response    
             df = spark.createDataFrame(response['results'], schema)
             
@@ -506,6 +557,7 @@ def process_batch_with_retry(response, max_retries=3):
             unique_df = unique_df.withColumn("ingestTime", current_timestamp())
             
             # Convert complex fields to JSON strings
+            # TODO: Not MapType(StringType(), StringType())
             unique_df = unique_df.withColumn("legal", to_json(col("legal"))) \
                                  .withColumn("acl", to_json(col("acl"))) \
                                  .withColumn("tags", to_json(col("tags"))) \
@@ -515,21 +567,32 @@ def process_batch_with_retry(response, max_retries=3):
             # Lock to ensure only one thread writes to the Delta table at a time
             with write_lock:
                 # Load the Delta table
-                table = DeltaTable.forPath(spark, table_path)
+                # log_message("INFO", f"Table path {table_path}")
+                # log_message("INFO", f"Data Frame: {unique_df.collect()[0]}")
+                # table = DeltaTable.forPath(spark, table_path)
                 
                 # Perform the merge (upsert)
-                table.alias("table") \
-                    .merge(
-                        unique_df.alias("updates"),
-                        "table.id = updates.id"
-                    ) \
-                    .whenMatchedUpdateAll() \
-                    .whenNotMatchedInsertAll() \
-                    .execute()
+                # table.alias("table") \
+                #     .merge(
+                #        unique_df.alias("updates"),
+                #       "table.id = updates.id"
+                #    ) \
+                #    .whenMatchedUpdateAll() \
+                #    .whenNotMatchedInsertAll() \
+                #    .execute()
+                
+                
+                # remove
+                unique_df.write.format("delta").mode("append").save(table_path)
+                # unique_df.createOrReplaceTempView("MoSQL")
+                # end remove
+                
+                
             
             log_message("INFO", "Batch processed successfully")
             return True  # Success
         except AnalysisException as e:
+            log_message("ERROR", f"Failed")
             if "concurrent update" in str(e):
                 retries += 1
                 log_message("ERROR", f"Concurrent update detected. Retry {retries} of {max_retries}.")
@@ -541,14 +604,19 @@ def process_batch_with_retry(response, max_retries=3):
     return False
 
 def sequential_api_calls_with_parallel_processing(cursor, access_token, query):
+    global batchNumber
     with ThreadPoolExecutor(max_workers=4) as executor:  # Adjust number of workers based on resources
         futures = []
         success = True
         
+        
         while cursor:
             # Update the cursor in the query
             query["cursor"] = cursor
-            log_message("INFO", f"Making API call with cursor: {cursor}")
+            # log_message("INFO", f"Making API call with cursor: {cursor}")
+
+            batchNumber = batchNumber+1
+            log_message("INFO", f"Processing batch number: {batchNumber}")
 
             # Make the API call
             response = make_api_call(query, access_token)
@@ -602,36 +670,45 @@ def make_api_call(query, access_token):
 # Log start of code
 log_message("INFO", "Batch export started")
 
+
 # Define paths for Delta tables
-table_name = config["table_name"]
-table_name = "maintest"
-table_path = f"Tables/{table_name}"
-lakehouse_name = config["lakehouse_name"]
+# table_name = config["table_name"]
+table_path = f"Tables/{main_table}"
+# lakehouse_name = config["lakehouse_name"]
+
+# log_message("INFO", lakehouse_name)
 
 # Query to get the last run value
 last_run_df = spark.sql(f"""
 SELECT run_timestamp
-FROM {lakehouse_name}.run_info
+FROM {run_info_table}
 ORDER BY run_timestamp DESC
 LIMIT 1
 """)
 
 # Check if the last run timestamp exists
-if last_run_df.count() == 0:
-    last_run_date = 0  # default to epoch if no previous run
-else:
-    last_run_date = last_run_df.collect()[0]['run_timestamp']
+# if last_run_df.count() == 0:
+#     last_run_date = 0  # default to epoch if no previous run
+# else:
+#     last_run_date = last_run_df.collect()[0]['run_timestamp']
+last_run_date = 0
 
 log_message("INFO", f"Last run date (epoch): {last_run_date}")
 human_readable_timestamp = datetime.fromtimestamp(last_run_date / 1000000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 log_message("INFO", f"Last run timestamp: {human_readable_timestamp}")
 
+# osdu:wks:master-data--Wellbore:1.0.0
+#    "kind": "*:*:*:*",
 # Define the initial query
 query = {
-    "kind": "*:*:*:*",
+    "kind": "osdu:wks:master-data--Wellbore:1.0.0",
     "query": f"version:[{last_run_date} TO *]",
     "limit": batch_size
 }
+
+
+startTime = time.time()
+
 
 # Make initial API call then sequential API call
 response = make_api_call(query, access_token)
@@ -642,19 +719,26 @@ if response:
 
     # Start processing batches sequentially, but process each in parallel
     success = sequential_api_calls_with_parallel_processing(cursor, access_token, query)
+    # success = process_batch_with_retry(response, max_retries=3)
 
     if success:
         # If all batches are processed successfully, update the last_run table
-        lakehouse_name = config["lakehouse_name"]
+        # lakehouse_name = config["lakehouse_name"]
 
         # Delete existing run_info records
-        spark.sql(f"DELETE FROM {lakehouse_name}.run_info")  # This line ensures there is only one document
+        spark.sql(f"DELETE FROM {run_info_table}")  # This line ensures there is only one document
 
         #Insert the current timestamp in epoch format
         run_id = str(uuid.uuid4())
         run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
         run_info_df = run_info_df.withColumn("run_timestamp", (unix_timestamp(lit(current_timestamp())).cast("long")*1000000))
-        run_info_df.write.insertInto(f"{lakehouse_name}.run_info", overwrite=False)
+        run_info_df.write.insertInto(run_info_table, overwrite=False)
+
+        endTime =  time.time()
+        processingTime = endTime - startTime
+        human_readable_timestamp = datetime.fromtimestamp(processingTime / 1000000, tz=timezone.utc).strftime('%H:%M:%S')
+
+        log_message("INFO", f"Processed {batchNumber} totalling {total_count} documents in {human_readable_timestamp} seconds")
         log_message("INFO", "Last run timestamp updated successfully")
 
     else:
@@ -663,4 +747,31 @@ else:
     log_message("ERROR", "Initial API call failed")
 
 write_log_batch_to_delta()
+
+
+# In[108]:
+
+
+# The command is not a standard IPython magic command. It is designed for use within Fabric notebooks only.
+# %%sql
+
+# SELECT COUNT(*) from _info
+
+
+# In[112]:
+
+
+# The command is not a standard IPython magic command. It is designed for use within Fabric notebooks only.
+# %%sql
+
+# select count(*) from storage_records_bronze
+
+
+# In[110]:
+
+
+# The command is not a standard IPython magic command. It is designed for use within Fabric notebooks only.
+# %%sql
+
+# Select id, kind, data, legal from main where CONTAINS(data, "trajectories") limit 10
 
