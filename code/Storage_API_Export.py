@@ -71,7 +71,7 @@ import json
 # Correct the JSON string format and load it
 config_json = '''
 {
-    "server": "https://<adme instance>.energy.azure.com",
+    "server": "https://mohahuja.energy.azure.com",
     "crs_catalog_url": "/api/crs/catalog/v2/",
     "crs_converter_url": "/api/crs/converter/v2/",
     "entitlements_url": "/api/entitlements/v2/",
@@ -84,23 +84,23 @@ config_json = '''
     "search_api_search_type":"query_with_cursor",
     "unit_url": "/api/unit/v3/",
     "workflow_url": "/api/workflow/v1/",
-    "data_partition_id": "",
-    "legal_tag": "",
-    "acl_viewer": "",
-    "acl_owner": "",
+    "data_partition_id": "testdata",
+    "legal_tag": "legal_tag",
+    "acl_viewer": "acl_viewer",
+    "acl_owner": "acl_owner",
     "authentication_mode": "msal_interactive",
-    "authority": "https://login.microsoftonline.com/3aa4a235-b6e2-48d5-9195-7fcf05b459b0",
-    "scopes": [""],
-    "client_id": "",
-    "tenant_id": "",
-    "redirect_uri": "http://localhost:8080",
+    "authority": "https://login.microsoftonline.com",
+    "scopes": ["https://management.core.windows.net/.default"],
+    "client_id": "30f78451-12ec-41f2-8495-89845fca77ce",
+    "client_secret": "{{SECRET}}",
+    "tenant_id": "e2b70470-e94a-4309-936b-4830585f32e9",
+    "redirect_uri": "http://localhost:5050",
     "access_token_type" : "",
     "key_vault_name" : "",
     "secret_name" : "",
-    "table_name" : "",
-    "logging_table" : "",
-    "run_info_table" : "",
-    "lakehouse_name" : ""
+    "main_table" : "storage_records_bronze_5",
+    "logging_table" : "_info",
+    "run_info_table" : "_run"
 }
 '''
 
@@ -115,6 +115,10 @@ config = pd.Series(config_dict)
 batch_size = 1000
 
 display(config)
+
+main_table = config["main_table"]
+run_info_table = config["run_info_table"]
+logging_table = config["logging_table"]
 
 
 # # Spark settings
@@ -290,8 +294,9 @@ def write_log_batch_to_delta():
             log_df = spark.createDataFrame(log_batch, schema=log_schema)
 
             # Define the paths for Delta tables
-            table_name = config["logging_table"]
-            table_path = f"Tables/{table_name}"
+            table_path = f"Tables/{logging_table}"
+
+            print(log_batch)
 
             # Write the logs to the Delta table in one batch
             log_df.write.format("delta").mode("append").save(table_path)
@@ -405,18 +410,28 @@ def authenticate_osdu(client_id: str, client_secret: str, authority: str, scopes
         log_message("ERROR", error_message)
     return None
 
-key_vault_name = config["key_vault_name"]
+# key_vault_name = config["key_vault_name"]
+# access_token = authenticate_osdu(
+#     client_id = config['client_id'],    
+#     client_secret= tl.get_secret_with_token(
+#         f"https://{key_vault_name}.vault.azure.net/",
+#         config["secret_name"],
+#         mssparkutils.credentials.getToken(config["access_token_type"])
+#     ),
+#     authority= config['authority'],
+#     scopes= config['scopes']
+    
+# )
+
+# Construct the authority
+authority = f"{config['authority']}/{config['tenant_id']}"
+
 access_token = authenticate_osdu(
     client_id = config['client_id'],    
-    client_secret= tl.get_secret_with_token(
-        f"https://{key_vault_name}.vault.azure.net/",
-        config["secret_name"],
-        mssparkutils.credentials.getToken(config["access_token_type"])
-    ),
-    authority= config['authority'],
+    client_secret= config['client_secret'],
+    authority= authority,
     scopes= config['scopes']
-    
-)
+    )
 
 
 
@@ -427,7 +442,7 @@ access_token = authenticate_osdu(
 
 
 ###This code only needs to be run once to establish the table where the data will be stored
-rom pyspark.sql import SparkSession
+from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, TimestampType
 from delta.tables import DeltaTable
 
@@ -457,7 +472,7 @@ def recreate_table_with_new_schema(table_name, schema):
 
 # Example usage
 # Assuming table_name and storage_schema are loaded from config
-table_name = config["table_name"]
+# table_name = config["table_name"]
 storage_schema = StructType([
     StructField("data", StringType(), True),
     StructField("meta", StringType(), True),
@@ -473,7 +488,7 @@ storage_schema = StructType([
 ])
 
 # Call the function with table name from config
-recreate_table_with_new_schema(table_name, storage_schema)
+recreate_table_with_new_schema(main_table, storage_schema)
 
 
 # # Reset last run time manually
@@ -492,12 +507,12 @@ from datetime import datetime, timezone
 # Initialize Spark session (uncomment if needed)
 # spark = SparkSession.builder.appName("ExampleApp").getOrCreate()
 
-lakehouse_name = config["lakehouse_name"]
-table_name = f"{lakehouse_name}.run_info"
+# lakehouse_name = config["lakehouse_name"]
+# table_name = f"{run_info_table}" # f"{lakehouse_name}.run_info"
 
 # SQL to create the table if it doesn't exist
 create_table_sql = f"""
-CREATE TABLE IF NOT EXISTS {lakehouse_name}.run_info (
+CREATE TABLE IF NOT EXISTS {run_info_table} (
     run_id STRING,
     run_timestamp LONG
 )
@@ -507,7 +522,7 @@ CREATE TABLE IF NOT EXISTS {lakehouse_name}.run_info (
 spark.sql(create_table_sql)
 
 # Clear the table for testing purposes (remove this in production)
-spark.sql(f"DELETE FROM {lakehouse_name}.run_info")
+spark.sql(f"DELETE FROM {run_info_table}")
 
 # Define the specific test date
 test_run_date = "2024-09-05 00:00:00"
@@ -519,12 +534,12 @@ run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
 run_info_df = run_info_df.withColumn("run_timestamp", (unix_timestamp(lit(test_run_date)).cast("long")*1000000))
 print(run_info_df.collect()[0])
 
-run_info_df.write.insertInto(table_name, overwrite=False)
+run_info_df.write.insertInto(run_info_table, overwrite=False)
 
 # Query to get the last run value
 last_run_df = spark.sql(f"""
 SELECT run_timestamp
-FROM {lakehouse_name}.run_info
+FROM {run_info_table}
 ORDER BY run_timestamp DESC
 LIMIT 1
 """)
@@ -788,27 +803,31 @@ def sequential_api_calls_with_parallel_processing(cursor, access_token, query, d
 print("Batch export started")
 
 # Define paths for Delta tables
-table_name = config["table_name"]
-table_path = f"Tables/{table_name}"
-lakehouse_name = config["lakehouse_name"]
+# table_name = config["table_name"]
+table_path = f"Tables/{main_table}"
+# lakehouse_name = config["lakehouse_name"]
 
 # Query to get the last run value
 last_run_df = spark.sql(f"""
 SELECT run_timestamp
-FROM {lakehouse_name}.run_info
+FROM {run_info_table}
 ORDER BY run_timestamp DESC
 LIMIT 1
 """)
 
 # Check if the last run timestamp exists
-if last_run_df.count() == 0:
-    last_run_date = 0  # Default to epoch if no previous run
-else:
-    last_run_date = last_run_df.collect()[0]['run_timestamp']
+# if last_run_df.count() == 0:
+#     last_run_date = 0  # default to epoch if no previous run
+# else:
+#     last_run_date = last_run_df.collect()[0]['run_timestamp']
+last_run_date = 0
 
-###last_run_date is epoch/version
+
+# osdu:wks:master-data--Wellbore:1.0.0
+#    "kind": "*:*:*:*",
+# Define the initial query
 query = {
-    "kind": "*:*:*:*",
+    "kind": "osdu:wks:master-data--Wellbore:1.0.0",
     "query": f"version:[{last_run_date} TO *]",
     "limit": batch_size
 }
@@ -825,15 +844,15 @@ human_readable_timestamp = datetime.fromtimestamp(last_run_date / 1000000, tz=ti
 print(f"Last run timestamp: {human_readable_timestamp}")
 
 # Function to update the last run timestamp in the run_info table
-def update_last_run_timestamp(lakehouse_name):
+def update_last_run_timestamp():
     # Delete existing run_info records to keep only the latest run
-    #spark.sql(f"DELETE FROM {lakehouse_name}.run_info")
+    # spark.sql(f"DELETE FROM {lakehouse_name}.run_info")
 
     # Insert the current timestamp in epoch format as the new last run timestamp
     run_id = str(uuid.uuid4())
     run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
     run_info_df = run_info_df.withColumn("run_timestamp", (unix_timestamp(lit(current_timestamp())).cast("long") * 1000000))
-    #run_info_df.write.insertInto(f"{lakehouse_name}.run_info", overwrite=False)
+    # run_info_df.write.insertInto(run_info_table, overwrite=False)
     log_message("INFO", "Last run timestamp updated successfully")
 
 # Function to process the main data pipeline
@@ -850,16 +869,19 @@ def main_process(access_token, query, reset_last_run=False, document_limit=None)
         success = sequential_api_calls_with_parallel_processing(cursor, access_token, query, document_limit=document_limit)
 
         if success:
-            lakehouse_name = config["lakehouse_name"]
+            # lakehouse_name = config["lakehouse_name"]
 
             # Reset last run timestamp if required
             if reset_last_run:
                 log_message("INFO", "Resetting the last run timestamp...")
-                update_last_run_timestamp(lakehouse_name)
+                # update_last_run_timestamp(lakehouse_name)
+                update_last_run_timestamp()
             else:
                 # Update the last run timestamp if processing was successful
                 log_message("INFO", "Updating the last run timestamp after successful processing...")
-                update_last_run_timestamp(lakehouse_name)
+                # update_last_run_timestamp(lakehouse_name)
+                update_last_run_timestamp()
+				
         else:
             log_message("ERROR", "Batch processing failed. Last run timestamp not updated.")
     else:
@@ -872,4 +894,3 @@ def main_process(access_token, query, reset_last_run=False, document_limit=None)
 # Assuming access_token, query, and other configurations are set correctly
 ###make document limin write last run time. Set time value from last document as last run time
 main_process(access_token=access_token, query=query, reset_last_run=True, document_limit=20000000000000)  # Example with document limit
-
