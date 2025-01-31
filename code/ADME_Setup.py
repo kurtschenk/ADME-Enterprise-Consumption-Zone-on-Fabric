@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## ADME_Setup
+# ## Setup - ks
 # 
 # New notebook
 
@@ -54,16 +54,18 @@
 # **The variables are called with config["variable"], for example: config["server"]**
 # 
 
-# In[ ]:
+# In[13]:
 
 
 import pandas as pd
 import json
 
+# TODO: Put sensitive information in Key Vault 
+
 # Correct the JSON string format and load it
 config_json = '''
 {
-    "server": "",
+    "server": "https://mahuja.energy.azure.com",
     "crs_catalog_url": "/api/crs/catalog/v2/",
     "crs_converter_url": "/api/crs/converter/v2/",
     "entitlements_url": "/api/entitlements/v2/",
@@ -74,7 +76,7 @@ config_json = '''
     "storage_url": "/api/storage/v2/",
     "unit_url": "/api/unit/v3/",
     "workflow_url": "/api/workflow/v1/",
-    "data_partition_id": "",
+    "data_partition_id": "testdata",
     "legal_tag": "legal_tag",
     "acl_viewer": "acl_viewer",
     "acl_owner": "acl_owner",
@@ -87,7 +89,7 @@ config_json = '''
     "access_token_type" : "keyvault",
     "key_vault_name" : "",
     "secret_name" : "",
-    "table_name" : "main",
+    "main_table" : "main",
     "logging_table" : "logging_info",
     "run_info_table" : "run_info",
     "delete_existing_table" : "no"
@@ -106,7 +108,7 @@ batch_size = 750
 display(config)
 
 
-# In[ ]:
+# In[2]:
 
 
 from pyspark.sql.types import StructType, StructField, StringType, LongType, TimestampType, MapType
@@ -148,10 +150,70 @@ run_info_schema = StructType([
 ])
 
 
-# In[ ]:
+# In[11]:
 
 
-#Run this to create logging_info table
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType
+
+def create_table(spark: SparkSession, table_name: str, delete_existing_table: bool, schema: StructType) -> None:
+    # Define the target table name and path
+    table_path = f"Tables/{table_name}"
+
+    # Check if the table exists
+    table_exists = DeltaTable.isDeltaTable(spark, table_path)
+    print(f"table exists: {table_exists}")
+
+    if table_exists and delete_existing_table:
+        # If table exists and we need to delete/overwrite it
+        deltaTable = DeltaTable.forPath(spark, table_path)
+        deltaTable.delete()  # This deletes all records in the table, not the table itself
+        
+        # Create an empty DataFrame with the schema and overwrite the existing table
+        empty_df = spark.createDataFrame([], schema)
+        empty_df.write.format("delta").mode("overwrite").save(table_path)
+        print(f"Existing table {table_name} at {table_path} was deleted and recreated with the schema.")
+
+    elif not table_exists:
+        # If the table does not exist, create it
+        empty_df = spark.createDataFrame([], schema)
+        empty_df.write.format("delta").mode("overwrite").save(table_path)
+        print(f"Table {table_name} created at {table_path} with the schema.")
+    else:
+        # If the table exists and we should not delete it
+        print(f"Table {table_name} already exists at {table_path}. No changes made.")
+
+    return None
+
+    from pyspark.sql.utils import AnalysisException
+
+def create_table2(spark: SparkSession, table_name: str, delete_existing_table: bool, schema: StructType) -> None:
+    table_path = f"Tables/{table_name}"
+
+    try:
+        table_exists = spark.catalog.tableExists(table_name)
+        print(f"table exists: {table_exists}")
+    except AnalysisException:
+        table_exists = False
+
+    if table_exists:
+        if delete_existing_table:
+            backup_table_name = f"{table_name}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            spark.sql(f"ALTER TABLE {table_name} RENAME TO {backup_table_name}")
+            print(f"Existing table {table_name} renamed to {backup_table_name} before recreation.")
+
+        # Drop and recreate
+        spark.sql(f"DROP TABLE IF EXISTS {table_name}")
+
+    # Create an empty table with schema
+    empty_df = spark.createDataFrame([], schema)
+    empty_df.write.format("delta").saveAsTable(table_name)
+    print(f"Table {table_name} created with the schema.")
+
+
+# In[4]:
+
+
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, TimestampType
 from delta.tables import DeltaTable
@@ -166,180 +228,59 @@ spark = SparkSession.builder \
     .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
     .getOrCreate()
 
-# Define the target table name and path
-table_name = config["logging_table"]
-table_path = f"Tables/{table_name}"
 
-# Check the config for whether to delete the existing table
+# In[14]:
+
+
+main_table = config["main_table"]
+run_info_table = config["run_info_table"]
+logging_table = config["logging_table"]
+
 delete_existing_table = config.get("delete_existing_table", "no").lower() == "yes"
 
-# Check if the table exists
-table_exists = DeltaTable.isDeltaTable(spark, table_path)
-
-if table_exists and delete_existing_table:
-    # If table exists and we need to delete/overwrite it
-    deltaTable = DeltaTable.forPath(spark, table_path)
-    deltaTable.delete()  # This deletes all records in the table, not the table itself
-    
-    # Create an empty DataFrame with the schema and overwrite the existing table
-    empty_df = spark.createDataFrame([], log_schema)
-    empty_df.write.format("delta").mode("overwrite").save(table_path)
-    print(f"Existing table {table_name} at {table_path} was deleted and recreated with the schema.")
-
-elif not table_exists:
-    # If the table does not exist, create it
-    empty_df = spark.createDataFrame([], log_schema)
-    empty_df.write.format("delta").mode("overwrite").save(table_path)
-    print(f"Table {table_name} created at {table_path} with the schema.")
-else:
-    # If the table exists and we should not delete it
-    print(f"Table {table_name} already exists at {table_path}. No changes made.")
-
-
-
-# In[ ]:
-
-
-#Run this code to create the run_info table before batch export
-from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, TimestampType
-from delta.tables import DeltaTable
-from pyspark.sql.functions import current_timestamp, lit
-from datetime import datetime
-import uuid
-
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("RunInfoTableCreation") \
-    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-    .getOrCreate()
-
-# Define the target table name and path
-table_name = config["run_info_table"]
-table_path = f"Tables/{table_name}"
-print(table_path)
-
-# Check the config for whether to delete the existing table
-delete_existing_table = config.get("delete_existing_table", "no").lower() == "yes"
-
-# Check if the table exists
-table_exists = DeltaTable.isDeltaTable(spark, table_path)
-
-if table_exists and delete_existing_table:
-    # If table exists and we need to delete/overwrite it
-    deltaTable = DeltaTable.forPath(spark, table_path)
-    deltaTable.delete()  # This deletes all records in the table, not the table itself
-    
-    # Create an empty DataFrame with the schema and overwrite the existing table
-    empty_df = spark.createDataFrame([], run_info_schema)
-    empty_df.write.format("delta").mode("overwrite").save(table_path)
-    print(f"Existing table {table_name} at {table_path} was deleted and recreated with the schema.")
-
-elif not table_exists:
-    # If the table does not exist, create it
-    empty_df = spark.createDataFrame([], run_info_schema)
-    empty_df.write.format("delta").mode("overwrite").save(table_path)
-    print(f"Table {table_name} created at {table_path} with the schema.")
-else:
-    # If the table exists and we should not delete it
-    print(f"Table {table_name} already exists at {table_path}. No changes made.")
-
-
-
-# In[ ]:
-
-
-#Run this code to create the main table before batch export
-from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, TimestampType
-from delta.tables import DeltaTable
-from pyspark.sql.functions import current_timestamp, lit
-from datetime import datetime
-import uuid
-
-# Initialize Spark session
-spark = SparkSession.builder \
-    .appName("LoggingTableCreation") \
-    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-    .getOrCreate()
-
-# Define the target table name and path
-table_name = config["table_name"]
-table_path = f"Tables/{table_name}"
-
-# Check the config for whether to delete the existing table
-delete_existing_table = config.get("delete_existing_table", "no").lower() == "yes"
-
-# Check if the table exists
-table_exists = DeltaTable.isDeltaTable(spark, table_path)
-
-if table_exists and delete_existing_table:
-    # If table exists and we need to delete/overwrite it
-    deltaTable = DeltaTable.forPath(spark, table_path)
-    deltaTable.delete()  # This deletes all records in the table, not the table itself
-    
-    # Create an empty DataFrame with the schema and overwrite the existing table
-    empty_df = spark.createDataFrame([], schema)
-    empty_df.write.format("delta").mode("overwrite").save(table_path)
-    print(f"Existing table {table_name} at {table_path} was deleted and recreated with the schema.")
-
-elif not table_exists:
-    # If the table does not exist, create it
-    empty_df = spark.createDataFrame([], schema)
-    empty_df.write.format("delta").mode("overwrite").save(table_path)
-    print(f"Table {table_name} created at {table_path} with the schema.")
-else:
-    # If the table exists and we should not delete it
-    print(f"Table {table_name} already exists at {table_path}. No changes made.")
-
+create_table2(spark, logging_table, delete_existing_table, log_schema)
+create_table2(spark, run_info_table, delete_existing_table, run_info_schema)
+create_table2(spark, main_table, delete_existing_table, schema)
 
 
 # # Helper code
 # Below are some cells with code to help developers check imported data and similar QA tasks
 
-# In[ ]:
+# In[6]:
 
 
-#Code to see imported data - copy this into a cell at the bottom of the batch export to check the number of documents in the lakehouse
+# Code to see imported data - copy this into a cell at the bottom of the batch export to check the number of documents in the lakehouse
 # Insert the current timestamp
 run_id = str(uuid.uuid4())
 run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
 run_info_df = run_info_df.withColumn("run_timestamp", current_timestamp())
-run_info_df.write.insertInto("admelakehouse.run_info", overwrite=False)
+
+run_info_df.write.insertInto(run_info_table, overwrite=False)
 
 # Display the 10 documents with the newest createTime
-df_newest = spark.sql(f"SELECT * FROM admelakehouse.{table_name} ORDER BY createTime DESC LIMIT 10")
+df_newest = spark.sql(f"SELECT * FROM {main_table} ORDER BY createTime DESC LIMIT 10")
 display(df_newest)
 
 # Query to select all rows from the table
-df_all = spark.sql(f"SELECT * FROM admelakehouse.{table_name}")
+df_all = spark.sql(f"SELECT * FROM {main_table}")
 
 # Count the number of rows
 num_documents = df_all.count()
 
 # Print the number of documents
-print(f"Number of documents in admelakehouse.{table_name}: {num_documents}")
+print(f"Number of documents in {main_table}: {num_documents}")
 
 
-# In[ ]:
+# In[7]:
 
 
-#Testcode to see how many documents has been imported and checking for duplicates
-from pyspark.sql import SparkSession
+# Testcode to see how many documents has been imported and checking for duplicates
+from pyspark.sql import SparkSession    
 from pyspark.sql.functions import col, count
 from delta.tables import DeltaTable
 
-spark = SparkSession.builder \
-    .appName("Table") \
-    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
-    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
-    .getOrCreate()
-
 # Define the target table name and path
-table_name = config["table_name"]
-target_table_path = f"Tables/{table_name}"
+target_table_path = f"Tables/{main_table}"
 
 # Load the Delta table
 bronze_table = DeltaTable.forPath(spark, target_table_path)
@@ -361,20 +302,21 @@ else:
     print("All IDs are unique.")
 
 # Query to select all rows from the table
-df_all = spark.sql("SELECT * FROM admelakehouse.main")
+df_all = spark.sql(f"SELECT * FROM {main_table}")
 
 # Count the number of rows
 num_documents = df_all.count()
 
 # Print the number of documents
-print(f"Number of documents in admelakehouse.main: {num_documents}")
+print(f"Number of documents in main: {num_documents}")
+
 
 # Query to select all rows from the table
-df_all_run = spark.sql("SELECT * FROM admelakehouse.run_info")
+df_all_run = spark.sql(f"SELECT * FROM {run_info_table}")
 
 # Count the number of rows
 num_documents_run = df_all_run.count()
 
 # Print the number of documents
-print(f"Number of documents in admelakehouse.run_info: {num_documents_run}")
+print(f"Number of documents in {run_info_table}: {num_documents_run}")
 
