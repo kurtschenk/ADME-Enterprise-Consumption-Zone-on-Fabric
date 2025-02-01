@@ -2,22 +2,20 @@
 # coding: utf-8
 
 # ## Storage_API_Export
+#
 # Export of Azure Data Manager for Energy (ADME) data to Fabric
 #
 # External dependencies:
-#   - ADME instance
-#   - Azure KeyVault for secure secret retrieval
+# - ADME instance
+# - Azure KeyVault to securely store the secret for connecting to ADME
 #
-# Delta tables for logging, data, and last-run info have been created in a separate notebook.
+# Delta Tables for logging, data, and last-run info have been set up in a separate notebook.
 #
-# Setup variables (accessed via config["variable"]) include server, API URLs, authentication details, etc.
+# Setup variables for ADME (these are accessed via config["variable"]).
 
 import pandas as pd
 import json
 import os
-from datetime import datetime, timezone
-import uuid
-import time
 
 # -------------------------
 # Configuration Section
@@ -57,10 +55,11 @@ config_json = '''
 }
 '''
 
+# Load configuration
 config_dict = json.loads(config_json)
 config = pd.Series(config_dict)
 
-# Secure configuration: if key_vault_name and secret_name are provided, retrieve client_secret from Key Vault.
+# For security, if key_vault_name and secret_name are provided, retrieve the secret from Azure Key Vault.
 if config["key_vault_name"] and config["secret_name"]:
     from azure.identity import DefaultAzureCredential
     from azure.keyvault.secrets import SecretClient
@@ -109,6 +108,8 @@ spark = SparkSession.builder \
 # Logging Setup
 # -------------------------
 import logging
+from datetime import datetime
+import uuid
 import inspect
 from threading import Lock
 
@@ -117,7 +118,7 @@ log_lock = Lock()
 
 def log_message(level, message):
     global log_batch
-    # Immediately log to console and via Python logging
+    # Log immediately to console and Python logging
     if level.upper() == "INFO":
         print(f"INFO: {message}")
         logging.info(message)
@@ -130,15 +131,16 @@ def log_message(level, message):
     else:
         print(f"DEBUG: {message}")
         logging.debug(message)
-    # Create a log entry and add to batch
+
+    # Create and add a log entry for later writing to Delta
     log_id = str(uuid.uuid4())
     frame = inspect.currentframe().f_back
     file_name = frame.f_code.co_filename
     line_number = frame.f_lineno
     log_timestamp = datetime.utcnow()
-    entry = (log_id, log_timestamp, level.upper(), file_name, str(line_number), message)
+    log_entry = (log_id, log_timestamp, level.upper(), file_name, str(line_number), message)
     with log_lock:
-        log_batch.append(entry)
+        log_batch.append(log_entry)
 
 def write_log_batch_to_delta():
     global log_batch
@@ -164,6 +166,7 @@ def write_log_batch_to_delta():
 # -------------------------
 from pyspark.sql.types import StructType, StructField, StringType, MapType, TimestampType
 
+# Data schema for Storage API export
 schema = StructType([
     StructField("data", MapType(StringType(), StringType()), True),
     StructField("meta", StringType(), True),
@@ -199,6 +202,7 @@ def authenticate_osdu(client_id: str, client_secret: str, authority: str, scopes
         log_message("ERROR", f"Unexpected error during authentication: {e}")
     return None
 
+# Construct authority and authenticate
 authority_full = f"{config['authority']}/{config['tenant_id']}"
 access_token = authenticate_osdu(
     client_id=config['client_id'],
@@ -208,7 +212,7 @@ access_token = authenticate_osdu(
 )
 
 # -------------------------
-# Delta Table Creation
+# Table Creation (Delta)
 # -------------------------
 from delta.tables import DeltaTable
 
@@ -238,9 +242,12 @@ storage_schema = StructType([
 recreate_table_with_new_schema(main_table, storage_schema)
 
 # -------------------------
-# Reset Last Run Timestamp (Testing Only)
+# Reset Last Run Timestamp (for testing)
 # -------------------------
 from pyspark.sql.functions import current_timestamp, lit, unix_timestamp
+import uuid
+from datetime import timezone
+
 create_table_sql = f"""
 CREATE TABLE IF NOT EXISTS {run_info_table} (
     run_id STRING,
@@ -249,6 +256,7 @@ CREATE TABLE IF NOT EXISTS {run_info_table} (
 """
 spark.sql(create_table_sql)
 spark.sql(f"DELETE FROM {run_info_table}")
+
 test_run_date = "2024-09-05 00:00:00"
 run_id = str(uuid.uuid4())
 run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
@@ -265,25 +273,28 @@ print(f"Last run timestamp: {human_readable_timestamp}")
 # Main Data Pipeline Functions
 # -------------------------
 from pyspark.sql.functions import to_timestamp, to_json, col, current_timestamp
+from delta.tables import DeltaTable
 from pyspark.sql.utils import AnalysisException
 from threading import Thread
 from queue import Queue
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Global variables for buffering and thread safety
+# Global variables for buffering and thread-safety
 write_lock = Lock()
 buffer_df = None
 write_queue = Queue()
 
 start_time = datetime.now()
 
-MAX_CONCURRENT_API_CALLS = 4  # Limit to 4 concurrent Storage API calls
+# Fetch Storage API data in batches, limiting to 4 concurrent API calls
+from concurrent.futures import ThreadPoolExecutor, as_completed
+MAX_CONCURRENT_API_CALLS = 4
 
 def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=MAX_CONCURRENT_API_CALLS):
     processed_count = 0
     success = True
     search_type = config["storage_search_type"]
     search_api = config["storage_url"]
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for i in range(0, len(ids), batch_size):
@@ -297,17 +308,18 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
                     success = process_storage_batch_with_retry(storage_response) and success
                     processed_count += len(storage_response.get('records', []))
                     if processed_count % 100 == 0:
-                        elapsed = (datetime.now() - start_time).total_seconds() / 60
-                        dpm = processed_count / elapsed if elapsed > 0 else 0
-                        print(f"Processed {processed_count} documents... ({dpm:.2f} docs per minute)")
+                        elapsed_time = (datetime.now() - start_time).total_seconds() / 60
+                        documents_per_minute = processed_count / elapsed_time if elapsed_time > 0 else 0
+                        print(f"Processed {processed_count} documents so far... ({documents_per_minute:.2f} documents per minute)")
                 else:
-                    print("Failed to fetch data for a batch.")
+                    print("Failed to fetch data for one of the batches.")
                     success = False
             except Exception as e:
                 print(f"Error during batch processing: {e}")
                 success = False
     return success
 
+# make_api_call for Storage (calls osdu_search_by_cursor)
 def make_api_call(query, access_token, search_type, search_api):
     try:
         response = osdu_search_by_cursor(
@@ -328,7 +340,7 @@ def make_api_call(query, access_token, search_type, search_api):
             log_message("ERROR", "Empty response from API")
             return None
     except Exception as e:
-        log_message("ERROR", f"Request exception: {e}")
+        log_message("ERROR", f"RequestException: {e}")
         return None
 
 # Buffering and asynchronous writing to Delta Lake
@@ -423,7 +435,7 @@ def sequential_api_calls_with_parallel_processing(cursor, access_token, query, d
             if cursor:
                 query['cursor'] = cursor
             else:
-                print(f"All pages processed. Total documents: {len(ids)}")
+                print(f"All pages processed. Total documents processed: {len(ids)}")
                 break
         else:
             print("Search API call failed!")
@@ -437,11 +449,12 @@ def sequential_api_calls_with_parallel_processing(cursor, access_token, query, d
     return success
 
 # -------------------------
-# OSDU Search Function
+# OSDU Search Function (for both Search and Storage API)
 # -------------------------
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import time
 
 def osdu_search_by_cursor(server: str, search_api: str, access_token: str, partition_id: str, query: dict, search_type: str, max_retries=5):
     full_api = f"{server}{search_api}{search_type}"
@@ -470,7 +483,7 @@ def osdu_search_by_cursor(server: str, search_api: str, access_token: str, parti
             if 'results' in json_response or 'records' in json_response:
                 return json_response
             else:
-                log_message("ERROR", f"Invalid response: {json.dumps(json_response)}")
+                log_message("ERROR", f"Invalid response content: {json.dumps(json_response)}")
                 return None
         except requests.exceptions.HTTPError as e:
             if response.status_code == 429:
@@ -502,8 +515,8 @@ def update_last_run_timestamp():
     from pyspark.sql.functions import unix_timestamp, current_timestamp, lit
     run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
     run_info_df = run_info_df.withColumn("run_timestamp", (unix_timestamp(lit(current_timestamp())).cast("long") * 1000000))
+    # In production, write into the run_info table; for now, we just log the update.
     log_message("INFO", "Last run timestamp updated successfully")
-    # In production, write to the run_info table.
 
 # -------------------------
 # Main Process Function
@@ -535,12 +548,17 @@ def main_process(access_token, query, reset_last_run=False, document_limit=None)
 # Execute Main Process
 # -------------------------
 print("Batch export started")
-table_path = f"Tables/{main_table}"
-last_run_date = 0  # For testing, default to 0
-print(f"Last run date (epoch): {last_run_date}")
-human_readable = datetime.fromtimestamp(last_run_date / 1000000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-print(f"Last run timestamp: {human_readable}")
 
+# Define Delta table path for main data
+table_path = f"Tables/{main_table}"
+
+# Get last run date (for testing, defaulting to 0)
+last_run_date = 0
+print(f"Last run date (epoch): {last_run_date}")
+human_readable_timestamp = datetime.fromtimestamp(last_run_date / 1000000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+print(f"Last run timestamp: {human_readable_timestamp}")
+
+# Define the initial query using the last run date
 query = {
     "kind": "osdu:wks:master-data--Wellbore:1.0.0",
     "query": f"version:[{last_run_date} TO *]",
