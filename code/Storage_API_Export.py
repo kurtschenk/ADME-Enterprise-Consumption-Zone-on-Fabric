@@ -19,6 +19,10 @@ from datetime import datetime, timezone
 import uuid
 import time
 
+if 'cached_response' not in globals():
+    storage_cachecached_response = None
+
+
 # -------------------------
 # Configuration Section
 # -------------------------
@@ -51,7 +55,7 @@ config_json = '''
     "access_token_type": "",
     "key_vault_name": "",
     "secret_name": "",
-    "main_table": "storage_records_bronze_5",
+    "main_table": "storage_records_bronze_13",
     "logging_table": "_info",
     "run_info_table": "_run"
 }
@@ -249,7 +253,8 @@ CREATE TABLE IF NOT EXISTS {run_info_table} (
 """
 spark.sql(create_table_sql)
 spark.sql(f"DELETE FROM {run_info_table}")
-test_run_date = "2024-09-05 00:00:00"
+test_run_date  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 run_id = str(uuid.uuid4())
 run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
 run_info_df = run_info_df.withColumn("run_timestamp", (unix_timestamp(lit(test_run_date)).cast("long") * 1000000))
@@ -289,10 +294,12 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
         for i in range(0, len(ids), batch_size):
             batch_ids = ids[i:i + batch_size]
             storage_query = {"records": batch_ids}
-            futures.append(executor.submit(make_api_call, storage_query, access_token, search_type, search_api))
+            futures.append(executor.submit(make_storage_api_call, storage_query, access_token, search_type, search_api, True))
         for future in as_completed(futures):
             try:
                 storage_response = future.result()
+                # storage_respose = mock_storage_records
+                # print(f"Storage response: {storage_response}")
                 if storage_response:
                     success = process_storage_batch_with_retry(storage_response) and success
                     processed_count += len(storage_response.get('records', []))
@@ -308,7 +315,9 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
                 success = False
     return success
 
+
 def make_api_call(query, access_token, search_type, search_api):
+
     try:
         response = osdu_search_by_cursor(
             server=config['server'],
@@ -318,6 +327,7 @@ def make_api_call(query, access_token, search_type, search_api):
             query=query,
             search_type=search_type
         )
+        
         if response:
             if 'results' in response or 'records' in response:
                 return response
@@ -330,6 +340,36 @@ def make_api_call(query, access_token, search_type, search_api):
     except Exception as e:
         log_message("ERROR", f"Request exception: {e}")
         return None
+
+
+def make_storage_api_call(query, access_token, search_type, search_api, use_cached=False):
+    global cached_response  # Use the cached_response from the global scope
+    
+     #print (f"use_cached: {use_cached}, cached_response: {cached_response}, query: {query}, search_api: {search_api}")
+
+    # If cached response exists and use_cached is True, return the cached response
+    if use_cached and cached_response:
+        # print("using cached storage response")
+        return cached_response
+    try:
+        response = make_api_call(query, access_token, search_type, search_api)
+        
+        if response:
+            if 'results' in response or 'records' in response:
+                # Save the response to cache if it's the first valid response
+                cached_response = response
+                # print(f"cache the response: {cached_response}"[:50])
+                return response
+            else:
+                log_message("ERROR", f"Unexpected response format: {json.dumps(response)}")
+                return None
+        else:
+            log_message("ERROR", "Empty response from API")
+            return None
+    except Exception as e:
+        log_message("ERROR", f"Request exception: {e}")
+        return None
+
 
 # Buffering and asynchronous writing to Delta Lake
 def buffer_and_queue_write(unique_df, buffer_size=2000):
