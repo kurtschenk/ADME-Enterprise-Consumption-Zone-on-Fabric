@@ -590,10 +590,12 @@ write_lock = Lock()
 buffer_df = None  # To accumulate DataFrames
 write_queue = Queue()  # Queue for buffered writes
 
+start_time = datetime.now()
+
 # Fetch and process Storage API data in batches
 from concurrent.futures import ThreadPoolExecutor, as_completed
-# Fetch and process Storage API data in parallel batches
-def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=2):
+# Fetch and process Storage API data in batches
+def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=4):
     processed_count = 0
     not_found_ids = []
     success = True
@@ -623,7 +625,9 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
                     # Update processed count and print every 100 documents
                     processed_count += len(storage_response['records'])
                     if processed_count % 100 == 0:
-                        print(f"Processed {processed_count} documents so far...")
+                        elapsed_time = (datetime.now() - start_time).total_seconds() / 60  # Elapsed time in minutes
+                        documents_per_minute = processed_count / elapsed_time if elapsed_time > 0 else 0
+                        print(f"Processed {processed_count} documents so far... ({documents_per_minute:.2f} documents per minute)")
                 else:
                     print(f"Failed to fetch data for one of the batches.")
                     success = False
@@ -833,7 +837,7 @@ query = {
 }
 
 # Set a document limit for testing performance
-document_limit = 2000  # Set this to the number of documents you'd like to test
+# document_limit = 2000  # Set this to the number of documents you'd like to test
 
 search_type = config["search_api_search_type"]
 search_api = config["search_url"]
@@ -893,4 +897,4 @@ def main_process(access_token, query, reset_last_run=False, document_limit=None)
 
 # Assuming access_token, query, and other configurations are set correctly
 ###make document limin write last run time. Set time value from last document as last run time
-main_process(access_token=access_token, query=query, reset_last_run=True, document_limit=20000000000000)  # Example with document limit
+main_process(access_token=access_token, query=query, reset_last_run=True, document_limit=500)  # Example with document limit
