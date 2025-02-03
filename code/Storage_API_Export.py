@@ -20,7 +20,7 @@ import uuid
 import time
 
 if 'cached_response' not in globals():
-    storage_cachecached_response = None
+    cached_response = None
 
 
 # -------------------------
@@ -55,7 +55,7 @@ config_json = '''
     "access_token_type": "",
     "key_vault_name": "",
     "secret_name": "",
-    "main_table": "storage_records_bronze_13",
+    "main_table": "storage_records_bronze_1",
     "logging_table": "_info",
     "run_info_table": "_run"
 }
@@ -83,6 +83,94 @@ display(config)
 main_table = config["main_table"]
 run_info_table = config["run_info_table"]
 logging_table = config["logging_table"]
+
+mock_storage_records = """{
+    "records": [{
+        "data": {
+            "CurrentOperatorID": "testdata:master-data--Organisation:Vermilion%20Energy%20Netherlands%20B.V.",
+            "DefaultVerticalMeasurementID": "Measured_From",
+            "DrillingReasons": [{"DrillingReasonTypeID": "testdata:reference-data--DrillingReasonType:EXP-HC:"}],
+            "FacilityEvents": [
+                {"EffectiveDateTime": "1982-04-22T00:00:00Z", "FacilityEventTypeID": "testdata:reference-data--FacilityEventType:Spud:"},
+                {"EffectiveDateTime": "1982-05-22T00:00:00Z", "FacilityEventTypeID": "testdata:reference-data--FacilityEventType:TDReached:"}
+            ],
+            "FacilityName": "1562",
+            "FacilityStates": [{"FacilityStateTypeID": "testdata:reference-data--FacilityStateType:Abandoned:"}],
+            "FacilityTypeID": "testdata:reference-data--FacilityType:Wellbore:",
+            "GeoContexts": [
+                {"GeoPoliticalEntityID": "testdata:master-data--GeoPoliticalEntity:Noord-Holland_Province:", "GeoTypeID": "testdata:reference-data--GeoPoliticalEntityType:Province:"},
+                {"GeoPoliticalEntityID": "testdata:master-data--GeoPoliticalEntity:Koggenland_Municipality:", "GeoTypeID": "testdata:reference-data--GeoPoliticalEntityType:Municipality:"}
+            ],
+            "InitialOperatorID": "testdata:master-data--Organisation:Elf%20Petroland:",
+            "NameAliases": [
+                {"AliasName": "1562", "AliasNameTypeID": "testdata:reference-data--AliasNameType:UWI:"},
+                {"AliasName": "LKM-01", "AliasNameTypeID": "testdata:reference-data--AliasNameType:BoreholeCode:"},
+                {"AliasName": "LEKERMEER-01", "AliasNameTypeID": "testdata:reference-data--AliasNameType:Borehole:"}
+            ],
+            "OperatingEnvironmentID": "testdata:reference-data--OperatingEnvironment:On:",
+            "PrimaryMaterialID": "testdata:reference-data--MaterialType:Dry:",
+            "ProjectedBottomHoleLocation": {
+                "AsIngestedCoordinates": {
+                    "CoordinateReferenceSystemID": "testdata:reference-data--CoordinateReferenceSystem:23031:",
+                    "features": [
+                        {"geometry": {"coordinates": [636477, 5837232], "type": "AnyCrsPoint"}, "properties": {}, "type": "AnyCrsFeature"}
+                    ],
+                    "persistableReferenceCrs": "{\"authCode\":{\"auth\":\"EPSG\",\"code\":\"23031\"},\"name\":\"ED_1950_UTM_Zone_31N\",\"type\":\"LBC\",\"ver\":\"PE_10_3_1\",\"wkt\":\"PROJCS[\\\"ED_1950_UTM_Zone_31N\\\",GEOGCS[\\\"GCS_European_1950\\\",DATUM[\\\"D_European_1950\\\",SPHEROID[\\\"International_1924\\\",6378388.0,297.0]],PRIMEM[\\\"Greenwich\\\",0.0],UNIT[\\\"Degree\\\",0.0174532925199433]],PROJECTION[\\\"Transverse_Mercator\\\"],PARAMETER[\\\"False_Easting\\\",500000.0],PARAMETER[\\\"False_Northing\\\",0.0],PARAMETER[\\\"Central_Meridian\\\",3.0],PARAMETER[\\\"Scale_Factor\\\",0.9996],PARAMETER[\\\"Latitude_Of_Origin\\\",0.0],UNIT[\\\"Meter\\\",1.0],AUTHORITY[\\\"EPSG\\\",23031]]\"}",
+                    "type": "AnyCrsFeatureCollection"
+                }
+            },
+            "SequenceNumber": 1,
+            "SpatialLocation": {
+                "AsIngestedCoordinates": {
+                    "CoordinateReferenceSystemID": "testdata:reference-data--CoordinateReferenceSystem:23031:",
+                    "features": [
+                        {"geometry": {"coordinates": [636477, 5837232], "type": "AnyCrsPoint"}, "properties": {}, "type": "AnyCrsFeature"}
+                    ],
+                    "persistableReferenceCrs": "{\"authCode\":{\"auth\":\"EPSG\",\"code\":\"23031\"},\"name\":\"ED_1950_UTM_Zone_31N\",\"type\":\"LBC\",\"ver\":\"PE_10_3_1\",\"wkt\":\"PROJCS[\\\"ED_1950_UTM_Zone_31N\\\",GEOGCS[\\\"GCS_European_1950\\\",DATUM[\\\"D_European_1950\\\",SPHEROID[\\\"International_1924\\\",6378388.0,297.0]],PRIMEM[\\\"Greenwich\\\",0.0],UNIT[\\\"Degree\\\",0.0174532925199433]],PROJECTION[\\\"Transverse_Mercator\\\"],PARAMETER[\\\"False_Easting\\\",500000.0],PARAMETER[\\\"False_Northing\\\",0.0],PARAMETER[\\\"Central_Meridian\\\",3.0],PARAMETER[\\\"Scale_Factor\\\",0.9996],PARAMETER[\\\"Latitude_Of_Origin\\\",0.0],UNIT[\\\"Meter\\\",1.0],AUTHORITY[\\\"EPSG\\\",23031]]\"}",
+                    "type": "AnyCrsFeatureCollection"
+                }
+            },
+            "Wgs84Coordinates": {
+                "features": [
+                    {"geometry": {"coordinates": [5.01683945, 52.66596554], "type": "Point"}, "properties": {}, "type": "Feature"}
+                ],
+                "type": "FeatureCollection"
+            },
+            "TrajectoryTypeID": "testdata:reference-data--WellboreTrajectoryType:Vertical:",
+            "VerticalMeasurements": [
+                {"VerticalMeasurement": 2116, "VerticalMeasurementID": "TD-Original", "VerticalMeasurementPathID": "testdata:reference-data--VerticalMeasurementPath:MD:", "VerticalMeasurementTypeID": "testdata:reference-data--VerticalMeasurementType:TD:", "VerticalReferenceID": "Measured_From"},
+                {"VerticalMeasurement": 2116, "VerticalMeasurementID": "TVD", "VerticalMeasurementPathID": "testdata:reference-data--VerticalMeasurementPath:TVD:", "VerticalMeasurementTypeID": "testdata:reference-data--VerticalMeasurementType:TD:", "VerticalReferenceID": "Measured_From"},
+                {"VerticalCRSID": "testdata:reference-data--CoordinateReferenceSystem:5709:", "VerticalMeasurement": 3.3, "VerticalMeasurementID": "Measured_From", "VerticalMeasurementPathID": "testdata:reference-data--VerticalMeasurementPath:Elevation:", "VerticalMeasurementTypeID": "testdata:reference-data--VerticalMeasurementType:RotaryTable:"}
+            ],
+            "WellID": "testdata:master-data--Well:1562:"
+        },
+        "meta": [
+            {
+                "kind": "Unit",
+                "name": "m",
+                "persistableReference": "{\"abcd\":{\"a\":0.0,\"b\":1.0,\"c\":1.0,\"d\":0.0},\"symbol\":\"m\",\"baseMeasurement\":{\"ancestry\":\"L\",\"type\":\"UM\"},\"type\":\"UAD\"}",
+                "propertyNames": ["VerticalMeasurements[].VerticalMeasurement"],
+                "unitOfMeasureID": "testdata:reference-data--UnitOfMeasure:m:"
+            }
+        ],
+        "id": "testdata:master-data--Wellbore:1562",
+        "version": 1738216036443964,
+        "kind": "osdu:wks:master-data--Wellbore:1.0.0",
+        "acl": {
+            "viewers": ["data.default.viewers@testdata.dataservices.energy"],
+            "owners": ["data.default.owners@testdata.dataservices.energy"]
+        },
+        "legal": {
+            "legaltags": ["testdata-open-test-data"],
+            "otherRelevantDataCountries": ["US"],
+            "status": "compliant"
+        },
+        "createUser": "30f78451-12ec-41f2-8495-89845fca77ce",
+        "createTime": "2025-01-30T05:47:16.454Z"
+    }],
+    "notFound": [],
+    "conversionStatuses": []
+}"""
 
 # -------------------------
 # Spark Settings
@@ -121,6 +209,10 @@ log_lock = Lock()
 
 def log_message(level, message):
     global log_batch
+
+    start_time = datetime.now()
+    # print("DEBUG: log_message: start")
+
     # Immediately log to console and via Python logging
     if level.upper() == "INFO":
         print(f"INFO: {message}")
@@ -144,6 +236,11 @@ def log_message(level, message):
     with log_lock:
         log_batch.append(entry)
 
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    if (elapsed > 2):
+        print(f"DEBUG: log_message: end: {elapsed:.2f} ms")
+
+
 def write_log_batch_to_delta():
     global log_batch
     from pyspark.sql.types import StructType, StructField, StringType, TimestampType
@@ -161,7 +258,7 @@ def write_log_batch_to_delta():
             table_path = f"Tables/{logging_table}"
             log_df.write.format("delta").mode("append").save(table_path)
             log_batch = []
-    print("INFO: Logging finished")
+    log_message("INFO", "Logging finished")
 
 # -------------------------
 # Schema Definitions
@@ -218,12 +315,12 @@ from delta.tables import DeltaTable
 
 def recreate_table_with_new_schema(table_name, table_schema):
     table_path = f"Tables/{table_name}"
-    print(f"Processing table: {table_name}, Path: {table_path}")
+    log_message("INFO",f"Processing table: {table_name}, Path: {table_path}")
     table_exists = DeltaTable.isDeltaTable(spark, table_path)
-    print(f"Table exists: {table_exists}, Path: {table_path}")
+    log_message("INFO", f"Table exists: {table_exists}, Path: {table_path}")
     empty_df = spark.createDataFrame([], table_schema)
     empty_df.write.format("delta").option("overwriteSchema", "true").mode("overwrite").save(table_path)
-    print(f"Table {table_name} created or updated at {table_path} with the new schema.")
+    log_message("INFO", f"Table {table_name} created or updated at {table_path} with the new schema.")
 
 from pyspark.sql.types import LongType
 storage_schema = StructType([
@@ -258,13 +355,13 @@ test_run_date  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 run_id = str(uuid.uuid4())
 run_info_df = spark.createDataFrame([(run_id,)], ["run_id"])
 run_info_df = run_info_df.withColumn("run_timestamp", (unix_timestamp(lit(test_run_date)).cast("long") * 1000000))
-print(run_info_df.collect()[0])
+log_message("INFO", f"{run_info_df.collect()[0]}")
 run_info_df.write.insertInto(run_info_table, overwrite=False)
 last_run_df = spark.sql(f"SELECT run_timestamp FROM {run_info_table} ORDER BY run_timestamp DESC LIMIT 1")
 last_run_timestamp = last_run_df.collect()[0]['run_timestamp']
-print(f"Last run timestamp: {last_run_timestamp}")
+log_message("INFO", f"Last run timestamp: {last_run_timestamp}")
 human_readable_timestamp = datetime.fromtimestamp(last_run_timestamp / 1000000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-print(f"Last run timestamp: {human_readable_timestamp}")
+log_message("INFO", f"Last run timestamp: {human_readable_timestamp}")
 
 # -------------------------
 # Main Data Pipeline Functions
@@ -285,6 +382,9 @@ start_time = datetime.now()
 MAX_CONCURRENT_API_CALLS = 4  # Limit to 4 concurrent Storage API calls
 
 def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=MAX_CONCURRENT_API_CALLS):
+    start_time = datetime.now()
+    log_message("DEBUG", "fetch_storage_data_in_batches: start")
+    
     processed_count = 0
     success = True
     search_type = config["storage_search_type"]
@@ -294,11 +394,13 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
         for i in range(0, len(ids), batch_size):
             batch_ids = ids[i:i + batch_size]
             storage_query = {"records": batch_ids}
+            log_message("DEBUG", "fetch_storage_data_in_batches: futures.append")
             futures.append(executor.submit(make_storage_api_call, storage_query, access_token, search_type, search_api, True))
         for future in as_completed(futures):
             try:
+                log_message("DEBUG", "fetch_storage_data_in_batches: futures as_completed")
                 storage_response = future.result()
-                # storage_respose = mock_storage_records
+                # storage_response = mock_storage_records
                 # print(f"Storage response: {storage_response}")
                 if storage_response:
                     success = process_storage_batch_with_retry(storage_response) and success
@@ -306,17 +408,24 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
                     if processed_count % 100 == 0:
                         elapsed = (datetime.now() - start_time).total_seconds() / 60
                         dpm = processed_count / elapsed if elapsed > 0 else 0
-                        print(f"Processed {processed_count} documents... ({dpm:.2f} docs per minute)")
+                        log_message("INFO", f"Processed {processed_count} documents... ({dpm:.2f} docs per minute)")
                 else:
-                    print("Failed to fetch data for a batch.")
+                    log_message("ERROR","Failed to fetch data for a batch.")
                     success = False
             except Exception as e:
-                print(f"Error during batch processing: {e}")
+                log_message("ERROR", f"Error during batch processing: {e}")
                 success = False
+
+    # end_time = datetime.now()
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG", f"fetch_storage_data_in_batches: end: {elapsed:.2f} ms")
     return success
 
 
 def make_api_call(query, access_token, search_type, search_api):
+
+    start_time = datetime.now()
+    log_message("DEBUG", f"make_api_call, {search_api}: start")
 
     try:
         response = osdu_search_by_cursor(
@@ -330,26 +439,42 @@ def make_api_call(query, access_token, search_type, search_api):
         
         if response:
             if 'results' in response or 'records' in response:
+                # end_time = datetime.now()
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"make_api_call, {search_api}: end: {elapsed:.2f} ms")
                 return response
             else:
                 log_message("ERROR", f"Unexpected response format: {json.dumps(response)}")
+                # end_time = datetime.now()
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"make_api_call, {search_api}: end: {elapsed:.2f} ms")
                 return None
         else:
             log_message("ERROR", "Empty response from API")
+            # end_time = datetime.now()
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            log_message("DEBUG", f"make_api_call, {search_api}: end: {elapsed:.2f} ms")
             return None
     except Exception as e:
         log_message("ERROR", f"Request exception: {e}")
+        # end_time = datetime.now()
+        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        log_message("DEBUG", f"make_api_call, {search_api}: end: {elapsed:.2f} ms")
         return None
 
 
 def make_storage_api_call(query, access_token, search_type, search_api, use_cached=False):
     global cached_response  # Use the cached_response from the global scope
     
+    start_time = datetime.now()
+    log_message("DEBUG", f"make_storage_api_call, {search_api}: start")
+
      #print (f"use_cached: {use_cached}, cached_response: {cached_response}, query: {query}, search_api: {search_api}")
 
     # If cached response exists and use_cached is True, return the cached response
     if use_cached and cached_response:
-        # print("using cached storage response")
+        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        log_message("DEBUG", f"make_storage_api_call, {search_api}: end: cached {use_cached}: {elapsed:.2f} ms")
         return cached_response
     try:
         response = make_api_call(query, access_token, search_type, search_api)
@@ -359,30 +484,71 @@ def make_storage_api_call(query, access_token, search_type, search_api, use_cach
                 # Save the response to cache if it's the first valid response
                 cached_response = response
                 # print(f"cache the response: {cached_response}"[:50])
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"make_storage_api_call, {search_api}: end: cached {use_cached}: {elapsed:.2f} ms")
                 return response
             else:
                 log_message("ERROR", f"Unexpected response format: {json.dumps(response)}")
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"make_storage_api_call, {search_api}: end: cached {use_cached}: {elapsed:.2f} ms")
                 return None
         else:
             log_message("ERROR", "Empty response from API")
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            log_message("DEBUG", f"make_storage_api_call, {search_api}: end: cached {use_cached}: {elapsed:.2f} ms")
             return None
     except Exception as e:
         log_message("ERROR", f"Request exception: {e}")
+        elapsed = (datetime.now() - start_time).total_seconds() * 1000
+        log_message("DEBUG", f"make_storage_api_call, {search_api}: end: cached {use_cached}: {elapsed:.2f} ms")
         return None
 
+# Global variable to track the number of rows in the buffer
+if 'buffer_row_count' not in globals():
+    buffer_row_count = 0
 
 # Buffering and asynchronous writing to Delta Lake
 def buffer_and_queue_write(unique_df, buffer_size=2000):
-    global buffer_df
+    global buffer_df, buffer_row_count
+    start_time = datetime.now()
+    log_message("DEBUG", "buffer_and_queue_write: start")
+    
+    # TODO: Still expensive
+    # Get count of new rows once
+    # new_rows = unique_df.count()
+    
+    # Update the global buffer and row count
     if buffer_df is None:
         buffer_df = unique_df
     else:
         buffer_df = buffer_df.union(unique_df)
-    if buffer_df.count() >= buffer_size:
-        write_queue.put(buffer_df)
-        buffer_df = None
+        elapsed = (datetime.now() - start_time).total_seconds() * 1000    
+        log_message("DEBUG", f"buffer_and_queue_write: buffer and union DataFrame: {elapsed:.2f} ms")
+
+    # buffer_row_count += new_rows
+    
+    # Log how many new rows were added
+    # elapsed = (datetime.now() - start_time).total_seconds() * 1000    
+    # log_message("DEBUG", f"buffer_and_queue_write: added {new_rows} rows, total buffer rows: {buffer_row_count}, time: {elapsed:.2f} ms")
+    
+    # Check against the buffer size using the running counter
+    # if buffer_row_count >= buffer_size:
+    #     elapsed = (datetime.now() - start_time).total_seconds() * 1000    
+    #     log_message("DEBUG", "buffer_and_queue_write: count > {buffer_size}: before write_queue.put: {elapsed:.2f} ms")
+    #     write_queue.put((buffer_df, datetime.now()))
+    #     elapsed = (datetime.now() - start_time).total_seconds() * 1000    
+    #     log_message("DEBUG", "buffer_and_queue_write: count > {buffer_size}: after write_queue.put: {elapsed:.2f} ms")
+    #     buffer_df = None
+    #    buffer_row_count = 0  # Reset counter
+    
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG", f"buffer_and_queue_write: end: {elapsed:.2f} ms")
+
 
 def write_to_delta(df):
+    start_time = datetime.now()
+    log_message("DEBUG", "write_to_delta: start")
+
     with write_lock:
         table = DeltaTable.forPath(spark, f"Tables/{main_table}")
         table.alias("table") \
@@ -394,12 +560,22 @@ def write_to_delta(df):
             .whenNotMatchedInsertAll() \
             .execute()
 
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG", f"write_to_delta: end: {elapsed:.2f} ms")
+
 def async_writer():
     while True:
-        df = write_queue.get()
+        start_time = datetime.now()
+        log_message("DEBUG", "async_writer: start")
+        df, put_in_queue_time = write_queue.get()
+        elapsed = (datetime.now() - put_in_queue_time).total_seconds() * 1000
+        log_message("DEBUG", f"async_writer: time in queue:{elapsed:.2f} ms: when put in queue: {put_in_queue_time }")
         if df is None:
             break
         write_to_delta(df)
+
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG",f"async_writer: end: {elapsed:.2f} ms")
 
 writer_thread = Thread(target=async_writer, daemon=True)
 writer_thread.start()
@@ -407,13 +583,16 @@ writer_thread.start()
 def stop_async_writer():
     global buffer_df
     if buffer_df is not None and buffer_df.count() > 0:
-        print(f"Flushing remaining {buffer_df.count()} documents from buffer...")
-        write_queue.put(buffer_df)
+        log_message("INFO", f"Flushing remaining {buffer_df.count()} documents from buffer...")
+        write_queue.put((buffer_df, datetime.now()))
         buffer_df = None
-    write_queue.put(None)
+    write_queue.put((None, datetime.now()))
     writer_thread.join()
 
 def process_storage_batch_with_retry(storage_response, max_retries=3):
+    start_time = datetime.now()
+    log_message("DEBUG", "process_storage_batch_with_retry: start")
+  
     retries = 0
     while retries < max_retries:
         try:
@@ -427,19 +606,29 @@ def process_storage_batch_with_retry(storage_response, max_retries=3):
                                  .withColumn("tags", to_json(col("tags"))) \
                                  .withColumn("data", to_json(col("data")))
             buffer_and_queue_write(unique_df)
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            log_message("DEBUG", f"process_storage_batch_with_retry:: end: {elapsed:.2f} ms")  
             return True
         except AnalysisException as e:
             if "concurrent update" in str(e):
                 retries += 1
-                print(f"Concurrent update detected. Retry {retries} of {max_retries}.")
+                log_message("ERROR", f"Concurrent update detected. Retry {retries} of {max_retries}.")
                 time.sleep(2 ** retries)
             else:
-                print(f"Failed to process batch: {e}")
+                log_message("ERROR", f"Failed to process batch: {e}")
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"process_storage_batch_with_retry:: end: {elapsed:.2f} ms")  
                 break
-    print(f"Failed to process batch after {max_retries} retries")
+
+    log_message("ERROR", f"Failed to process batch after {max_retries} retries")
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG", f"process_storage_batch_with_retry:: end: {elapsed:.2f} ms")  
     return False
 
 def sequential_api_calls_with_parallel_processing(cursor, access_token, query, document_limit=None):
+    start_time = datetime.now()
+    log_message("DEBUG", f"sequential_api_calls_with_parallel_processing: start")
+
     ids = []
     total_count = 0
     first_call = True
@@ -450,11 +639,11 @@ def sequential_api_calls_with_parallel_processing(cursor, access_token, query, d
         if response:
             if first_call:
                 total_count = response.get('totalCount', len(response.get('results', [])))
-                print(f"Total documents found: {total_count}")
+                log_message("INFO", f"Total documents found: {total_count}")
                 first_call = False
             for doc in response.get('results', []):
                 if document_limit and len(ids) >= document_limit:
-                    print(f"Reached document limit: {document_limit}")
+                    log_message("INFO", f"Reached document limit: {document_limit}")
                     break
                 ids.append(doc['id'])
             if document_limit and len(ids) >= document_limit:
@@ -463,17 +652,21 @@ def sequential_api_calls_with_parallel_processing(cursor, access_token, query, d
             if cursor:
                 query['cursor'] = cursor
             else:
-                print(f"All pages processed. Total documents: {len(ids)}")
+                log_message("INFO", f"All pages processed. Total documents: {len(ids)}")
                 break
         else:
-            print("Search API call failed!")
+            log_message("ERROR", "Search API call failed!")
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            log_message("sequential_api_calls_with_parallel_processing: end: {elapsed:.2f} ms")
             return False
     if ids:
         success = fetch_storage_data_in_batches(ids, access_token)
     else:
-        print("No IDs extracted from the Search API response")
+        log_message("INFO", "No IDs extracted from the Search API response")
         success = False
     stop_async_writer()
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG", f"sequential_api_calls_with_parallel_processing: end: {elapsed:.2f} ms")
     return success
 
 # -------------------------
@@ -484,6 +677,9 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 def osdu_search_by_cursor(server: str, search_api: str, access_token: str, partition_id: str, query: dict, search_type: str, max_retries=5):
+    start_time = datetime.now()
+    log_message("DEBUG", "osdu_search_by_cursor: start")
+
     full_api = f"{server}{search_api}{search_type}"
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -508,9 +704,13 @@ def osdu_search_by_cursor(server: str, search_api: str, access_token: str, parti
             response.raise_for_status()
             json_response = response.json()
             if 'results' in json_response or 'records' in json_response:
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"osdu_search_by_cursor: end: {elapsed:.2f} ms")
                 return json_response
             else:
                 log_message("ERROR", f"Invalid response: {json.dumps(json_response)}")
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"osdu_search_by_cursor: end: {elapsed:.2f} ms")
                 return None
         except requests.exceptions.HTTPError as e:
             if response.status_code == 429:
@@ -521,17 +721,27 @@ def osdu_search_by_cursor(server: str, search_api: str, access_token: str, parti
                 time.sleep(backoff_time)
             else:
                 log_message("ERROR", f"HTTP Error: {e}, URL: {full_api}, Query: {json.dumps(query)}")
+                elapsed = (datetime.now() - start_time).total_seconds() * 1000
+                log_message("DEBUG", f"osdu_search_by_cursor: end: {elapsed:.2f} ms")
                 return None
         except requests.exceptions.ConnectionError as e:
             log_message("ERROR", f"Connection Error: {e}, URL: {full_api}")
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            log_message("DEBUG", f"osdu_search_by_cursor: end: {elapsed:.2f} ms")
             return None
         except requests.exceptions.Timeout as e:
             log_message("ERROR", f"Timeout Error: {e}, URL: {full_api}")
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            log_message("DEBUG", f"osdu_search_by_cursor: end: {elapsed:.2f} ms")
             return None
         except Exception as e:
             log_message("ERROR", f"Unexpected error: {e}, URL: {full_api}")
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            log_message("DEBUG", f"osdu_search_by_cursor: end: {elapsed:.2f} ms")
             return None
     log_message("ERROR", f"Max retries exceeded for {full_api}")
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG", f"osdu_search_by_cursor: end: {elapsed:.2f} ms")
     return None
 
 # -------------------------
@@ -549,6 +759,9 @@ def update_last_run_timestamp():
 # Main Process Function
 # -------------------------
 def main_process(access_token, query, reset_last_run=False, document_limit=None):
+    start_time = datetime.now()
+    log_message("DEBUG", "main_process: start")
+
     search_type = config["search_api_search_type"]
     search_api = config["search_url"]
     response = make_api_call(query, access_token, search_type, search_api)
@@ -570,16 +783,19 @@ def main_process(access_token, query, reset_last_run=False, document_limit=None)
         log_message("ERROR", "Initial API call failed.")
     write_log_batch_to_delta()
     log_message("INFO", "write_log_batch_to_delta() executed successfully")
+    elapsed = (datetime.now() - start_time).total_seconds() * 1000
+    log_message("DEBUG", f"main_process: end: {elapsed:.2f} ms")
+
 
 # -------------------------
 # Execute Main Process
 # -------------------------
-print("Batch export started")
+log_message("INFO","Batch export started")
 table_path = f"Tables/{main_table}"
 last_run_date = 0  # For testing, default to 0
-print(f"Last run date (epoch): {last_run_date}")
+log_message("INFO", f"Last run date (epoch): {last_run_date}")
 human_readable = datetime.fromtimestamp(last_run_date / 1000000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-print(f"Last run timestamp: {human_readable}")
+log_message("INFO", f"Last run timestamp: {human_readable}")
 
 query = {
     "kind": "osdu:wks:master-data--Wellbore:1.0.0",
@@ -588,4 +804,4 @@ query = {
 }
 
 # Execute main process (example: limit to 500 documents for testing)
-main_process(access_token=access_token, query=query, reset_last_run=True, document_limit=500)
+main_process(access_token=access_token, query=query, reset_last_run=True, document_limit=40)
