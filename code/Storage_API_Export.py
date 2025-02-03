@@ -84,93 +84,6 @@ main_table = config["main_table"]
 run_info_table = config["run_info_table"]
 logging_table = config["logging_table"]
 
-mock_storage_records = """{
-    "records": [{
-        "data": {
-            "CurrentOperatorID": "testdata:master-data--Organisation:Vermilion%20Energy%20Netherlands%20B.V.",
-            "DefaultVerticalMeasurementID": "Measured_From",
-            "DrillingReasons": [{"DrillingReasonTypeID": "testdata:reference-data--DrillingReasonType:EXP-HC:"}],
-            "FacilityEvents": [
-                {"EffectiveDateTime": "1982-04-22T00:00:00Z", "FacilityEventTypeID": "testdata:reference-data--FacilityEventType:Spud:"},
-                {"EffectiveDateTime": "1982-05-22T00:00:00Z", "FacilityEventTypeID": "testdata:reference-data--FacilityEventType:TDReached:"}
-            ],
-            "FacilityName": "1562",
-            "FacilityStates": [{"FacilityStateTypeID": "testdata:reference-data--FacilityStateType:Abandoned:"}],
-            "FacilityTypeID": "testdata:reference-data--FacilityType:Wellbore:",
-            "GeoContexts": [
-                {"GeoPoliticalEntityID": "testdata:master-data--GeoPoliticalEntity:Noord-Holland_Province:", "GeoTypeID": "testdata:reference-data--GeoPoliticalEntityType:Province:"},
-                {"GeoPoliticalEntityID": "testdata:master-data--GeoPoliticalEntity:Koggenland_Municipality:", "GeoTypeID": "testdata:reference-data--GeoPoliticalEntityType:Municipality:"}
-            ],
-            "InitialOperatorID": "testdata:master-data--Organisation:Elf%20Petroland:",
-            "NameAliases": [
-                {"AliasName": "1562", "AliasNameTypeID": "testdata:reference-data--AliasNameType:UWI:"},
-                {"AliasName": "LKM-01", "AliasNameTypeID": "testdata:reference-data--AliasNameType:BoreholeCode:"},
-                {"AliasName": "LEKERMEER-01", "AliasNameTypeID": "testdata:reference-data--AliasNameType:Borehole:"}
-            ],
-            "OperatingEnvironmentID": "testdata:reference-data--OperatingEnvironment:On:",
-            "PrimaryMaterialID": "testdata:reference-data--MaterialType:Dry:",
-            "ProjectedBottomHoleLocation": {
-                "AsIngestedCoordinates": {
-                    "CoordinateReferenceSystemID": "testdata:reference-data--CoordinateReferenceSystem:23031:",
-                    "features": [
-                        {"geometry": {"coordinates": [636477, 5837232], "type": "AnyCrsPoint"}, "properties": {}, "type": "AnyCrsFeature"}
-                    ],
-                    "persistableReferenceCrs": "{\"authCode\":{\"auth\":\"EPSG\",\"code\":\"23031\"},\"name\":\"ED_1950_UTM_Zone_31N\",\"type\":\"LBC\",\"ver\":\"PE_10_3_1\",\"wkt\":\"PROJCS[\\\"ED_1950_UTM_Zone_31N\\\",GEOGCS[\\\"GCS_European_1950\\\",DATUM[\\\"D_European_1950\\\",SPHEROID[\\\"International_1924\\\",6378388.0,297.0]],PRIMEM[\\\"Greenwich\\\",0.0],UNIT[\\\"Degree\\\",0.0174532925199433]],PROJECTION[\\\"Transverse_Mercator\\\"],PARAMETER[\\\"False_Easting\\\",500000.0],PARAMETER[\\\"False_Northing\\\",0.0],PARAMETER[\\\"Central_Meridian\\\",3.0],PARAMETER[\\\"Scale_Factor\\\",0.9996],PARAMETER[\\\"Latitude_Of_Origin\\\",0.0],UNIT[\\\"Meter\\\",1.0],AUTHORITY[\\\"EPSG\\\",23031]]\"}",
-                    "type": "AnyCrsFeatureCollection"
-                }
-            },
-            "SequenceNumber": 1,
-            "SpatialLocation": {
-                "AsIngestedCoordinates": {
-                    "CoordinateReferenceSystemID": "testdata:reference-data--CoordinateReferenceSystem:23031:",
-                    "features": [
-                        {"geometry": {"coordinates": [636477, 5837232], "type": "AnyCrsPoint"}, "properties": {}, "type": "AnyCrsFeature"}
-                    ],
-                    "persistableReferenceCrs": "{\"authCode\":{\"auth\":\"EPSG\",\"code\":\"23031\"},\"name\":\"ED_1950_UTM_Zone_31N\",\"type\":\"LBC\",\"ver\":\"PE_10_3_1\",\"wkt\":\"PROJCS[\\\"ED_1950_UTM_Zone_31N\\\",GEOGCS[\\\"GCS_European_1950\\\",DATUM[\\\"D_European_1950\\\",SPHEROID[\\\"International_1924\\\",6378388.0,297.0]],PRIMEM[\\\"Greenwich\\\",0.0],UNIT[\\\"Degree\\\",0.0174532925199433]],PROJECTION[\\\"Transverse_Mercator\\\"],PARAMETER[\\\"False_Easting\\\",500000.0],PARAMETER[\\\"False_Northing\\\",0.0],PARAMETER[\\\"Central_Meridian\\\",3.0],PARAMETER[\\\"Scale_Factor\\\",0.9996],PARAMETER[\\\"Latitude_Of_Origin\\\",0.0],UNIT[\\\"Meter\\\",1.0],AUTHORITY[\\\"EPSG\\\",23031]]\"}",
-                    "type": "AnyCrsFeatureCollection"
-                }
-            },
-            "Wgs84Coordinates": {
-                "features": [
-                    {"geometry": {"coordinates": [5.01683945, 52.66596554], "type": "Point"}, "properties": {}, "type": "Feature"}
-                ],
-                "type": "FeatureCollection"
-            },
-            "TrajectoryTypeID": "testdata:reference-data--WellboreTrajectoryType:Vertical:",
-            "VerticalMeasurements": [
-                {"VerticalMeasurement": 2116, "VerticalMeasurementID": "TD-Original", "VerticalMeasurementPathID": "testdata:reference-data--VerticalMeasurementPath:MD:", "VerticalMeasurementTypeID": "testdata:reference-data--VerticalMeasurementType:TD:", "VerticalReferenceID": "Measured_From"},
-                {"VerticalMeasurement": 2116, "VerticalMeasurementID": "TVD", "VerticalMeasurementPathID": "testdata:reference-data--VerticalMeasurementPath:TVD:", "VerticalMeasurementTypeID": "testdata:reference-data--VerticalMeasurementType:TD:", "VerticalReferenceID": "Measured_From"},
-                {"VerticalCRSID": "testdata:reference-data--CoordinateReferenceSystem:5709:", "VerticalMeasurement": 3.3, "VerticalMeasurementID": "Measured_From", "VerticalMeasurementPathID": "testdata:reference-data--VerticalMeasurementPath:Elevation:", "VerticalMeasurementTypeID": "testdata:reference-data--VerticalMeasurementType:RotaryTable:"}
-            ],
-            "WellID": "testdata:master-data--Well:1562:"
-        },
-        "meta": [
-            {
-                "kind": "Unit",
-                "name": "m",
-                "persistableReference": "{\"abcd\":{\"a\":0.0,\"b\":1.0,\"c\":1.0,\"d\":0.0},\"symbol\":\"m\",\"baseMeasurement\":{\"ancestry\":\"L\",\"type\":\"UM\"},\"type\":\"UAD\"}",
-                "propertyNames": ["VerticalMeasurements[].VerticalMeasurement"],
-                "unitOfMeasureID": "testdata:reference-data--UnitOfMeasure:m:"
-            }
-        ],
-        "id": "testdata:master-data--Wellbore:1562",
-        "version": 1738216036443964,
-        "kind": "osdu:wks:master-data--Wellbore:1.0.0",
-        "acl": {
-            "viewers": ["data.default.viewers@testdata.dataservices.energy"],
-            "owners": ["data.default.owners@testdata.dataservices.energy"]
-        },
-        "legal": {
-            "legaltags": ["testdata-open-test-data"],
-            "otherRelevantDataCountries": ["US"],
-            "status": "compliant"
-        },
-        "createUser": "30f78451-12ec-41f2-8495-89845fca77ce",
-        "createTime": "2025-01-30T05:47:16.454Z"
-    }],
-    "notFound": [],
-    "conversionStatuses": []
-}"""
 
 # -------------------------
 # Spark Settings
@@ -382,6 +295,8 @@ start_time = datetime.now()
 MAX_CONCURRENT_API_CALLS = 4  # Limit to 4 concurrent Storage API calls
 
 def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=MAX_CONCURRENT_API_CALLS):
+    final_batch = False
+
     start_time = datetime.now()
     log_message("DEBUG", "fetch_storage_data_in_batches: start")
     
@@ -395,7 +310,7 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
             batch_ids = ids[i:i + batch_size]
             storage_query = {"records": batch_ids}
             log_message("DEBUG", "fetch_storage_data_in_batches: futures.append")
-            futures.append(executor.submit(make_storage_api_call, storage_query, access_token, search_type, search_api, True))
+            futures.append(executor.submit(make_storage_api_call, storage_query, access_token, search_type, search_api, False))
         for future in as_completed(futures):
             try:
                 log_message("DEBUG", "fetch_storage_data_in_batches: futures as_completed")
@@ -403,7 +318,12 @@ def fetch_storage_data_in_batches(ids, access_token, batch_size=20, max_workers=
                 # storage_response = mock_storage_records
                 # print(f"Storage response: {storage_response}")
                 if storage_response:
-                    success = process_storage_batch_with_retry(storage_response) and success
+                    if processed_count % 2000 == 0:
+                        log_message("DEBUG", f"fetch_storage_data_in_batches: final batch: {processed_count}")
+                        final_batch = True   
+                    else:
+                        final_batch = False
+                    success = process_storage_batch_with_retry(storage_response, 3, final_batch) and success
                     processed_count += len(storage_response.get('records', []))
                     if processed_count % 100 == 0:
                         elapsed = (datetime.now() - start_time).total_seconds() / 60
@@ -508,8 +428,9 @@ if 'buffer_row_count' not in globals():
     buffer_row_count = 0
 
 # Buffering and asynchronous writing to Delta Lake
-def buffer_and_queue_write(unique_df, buffer_size=2000):
+def buffer_and_queue_write(unique_df, final_batch: bool):
     global buffer_df, buffer_row_count
+
     start_time = datetime.now()
     log_message("DEBUG", "buffer_and_queue_write: start")
     
@@ -517,29 +438,24 @@ def buffer_and_queue_write(unique_df, buffer_size=2000):
     # Get count of new rows once
     # new_rows = unique_df.count()
     
-    # Update the global buffer and row count
+    # Update the global buffer
     if buffer_df is None:
         buffer_df = unique_df
     else:
         buffer_df = buffer_df.union(unique_df)
         elapsed = (datetime.now() - start_time).total_seconds() * 1000    
-        log_message("DEBUG", f"buffer_and_queue_write: buffer and union DataFrame: {elapsed:.2f} ms")
-
-    # buffer_row_count += new_rows
-    
-    # Log how many new rows were added
-    # elapsed = (datetime.now() - start_time).total_seconds() * 1000    
-    # log_message("DEBUG", f"buffer_and_queue_write: added {new_rows} rows, total buffer rows: {buffer_row_count}, time: {elapsed:.2f} ms")
-    
+        log_message("DEBUG", f"buffer_and_queue_write: add rows to dataframe: {elapsed:.2f} ms")   
+        
     # Check against the buffer size using the running counter
     # if buffer_row_count >= buffer_size:
-    #     elapsed = (datetime.now() - start_time).total_seconds() * 1000    
-    #     log_message("DEBUG", "buffer_and_queue_write: count > {buffer_size}: before write_queue.put: {elapsed:.2f} ms")
-    #     write_queue.put((buffer_df, datetime.now()))
-    #     elapsed = (datetime.now() - start_time).total_seconds() * 1000    
-    #     log_message("DEBUG", "buffer_and_queue_write: count > {buffer_size}: after write_queue.put: {elapsed:.2f} ms")
-    #     buffer_df = None
-    #    buffer_row_count = 0  # Reset counter
+    if final_batch:
+        elapsed = (datetime.now() - start_time).total_seconds() * 1000    
+        log_message("DEBUG", f"buffer_and_queue_write: final_batch: {final_batch}: before write_queue.put: {elapsed:.2f} ms")
+        write_queue.put((buffer_df, datetime.now()))
+        elapsed = (datetime.now() - start_time).total_seconds() * 1000    
+        log_message("DEBUG", f"buffer_and_queue_write: after write_queue.put: {elapsed:.2f} ms")
+        buffer_df = None
+        buffer_row_count = 0  # Reset counter
     
     elapsed = (datetime.now() - start_time).total_seconds() * 1000
     log_message("DEBUG", f"buffer_and_queue_write: end: {elapsed:.2f} ms")
@@ -569,7 +485,7 @@ def async_writer():
         log_message("DEBUG", "async_writer: start")
         df, put_in_queue_time = write_queue.get()
         elapsed = (datetime.now() - put_in_queue_time).total_seconds() * 1000
-        log_message("DEBUG", f"async_writer: time in queue:{elapsed:.2f} ms: when put in queue: {put_in_queue_time }")
+        log_message("DEBUG", f"async_writer: time in queue: {elapsed:.2f} ms: when put in queue: {put_in_queue_time }")
         if df is None:
             break
         write_to_delta(df)
@@ -589,13 +505,15 @@ def stop_async_writer():
     write_queue.put((None, datetime.now()))
     writer_thread.join()
 
-def process_storage_batch_with_retry(storage_response, max_retries=3):
+
+def process_storage_batch_with_retry(storage_response, max_retries, final_batch: bool):
     start_time = datetime.now()
     log_message("DEBUG", "process_storage_batch_with_retry: start")
   
     retries = 0
     while retries < max_retries:
         try:
+            log_message("DEBUG", f"process_storage_batch_with_retry: in try, retries {retries}, final_batch: {final_batch}")  
             df = spark.createDataFrame(storage_response['records'], schema)
             unique_df = df.dropDuplicates(["id"])
             if 'createTime' in unique_df.columns:
@@ -605,9 +523,10 @@ def process_storage_batch_with_retry(storage_response, max_retries=3):
                                  .withColumn("acl", to_json(col("acl"))) \
                                  .withColumn("tags", to_json(col("tags"))) \
                                  .withColumn("data", to_json(col("data")))
-            buffer_and_queue_write(unique_df)
+            log_message("DEBUG", f"process_storage_batch_with_retry: before buffer_and_queue_write, retries {retries}, final_batch: {final_batch}")  
+            buffer_and_queue_write(unique_df, final_batch)
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
-            log_message("DEBUG", f"process_storage_batch_with_retry:: end: {elapsed:.2f} ms")  
+            log_message("DEBUG", f"process_storage_batch_with_retry: end: {elapsed:.2f} ms")  
             return True
         except AnalysisException as e:
             if "concurrent update" in str(e):
