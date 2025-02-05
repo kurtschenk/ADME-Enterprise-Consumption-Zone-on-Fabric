@@ -137,7 +137,7 @@ def log_message(level, message):
         print(f"ERROR: {message}")
         logging.error(message)
     else:
-        print(f"DEBUG: {message}")
+        # print(f"DEBUG: {message}")
         logging.debug(message)
     # Create a log entry and add to batch
     log_id = str(uuid.uuid4())
@@ -620,6 +620,7 @@ def osdu_search_by_cursor(server: str, search_api: str, access_token: str, parti
     while retries < max_retries:
         try:
             response = session.post(full_api, headers=headers, json=query)
+            response.status_code=429
             response.raise_for_status()
             json_response = response.json()
             if 'results' in json_response or 'records' in json_response:
@@ -704,6 +705,7 @@ def main_process(access_token, query, reset_last_run=False, document_limit=None)
     log_message("INFO", "write_log_batch_to_delta() executed successfully")
     elapsed = (datetime.now() - start_time).total_seconds() * 1000
     log_message("DEBUG", f"main_process: end: {elapsed:.2f} ms")
+    log_message("INFO", "See detailed debug logs in _info table")
 
 
 # -------------------------
